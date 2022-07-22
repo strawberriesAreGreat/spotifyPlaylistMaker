@@ -21,89 +21,144 @@
  *          num of requests   
  * 
  */
+
 const fs = require('fs');
 
+
 require('dotenv').config();
-var DB_PATH = process.env.DB_PATH+'playlist.db';
-const Datastore = require('nedb');
-var db = 
 
-module.exports = { 
-    
+const   Datastore = require('nedb'),
+        songDB = [process.env.DB_PATH + 'songs.db',"" ],
+        playlistDB = [process.env.DB_PATH + 'playlists.db', {fieldName: 'group_id', unique: true}] ;
+
+var db;
+
+module.exports = {
+
     // Load or Initialize db for server use
-    startDB: async function () { 
-        var db = {};
-        // Requires db to already exist
-        if (fs.existsSync(DB_PATH)) {
+    startDB: async function () {
+        
+       db = await new Promise((Resolve, Reject)=>{
+            Resolve ({ playlists: playlistDB, songs:songDB});
+                Reject(err);
+       });
 
-            db =  new Datastore({filename: DB_PATH, autoload: true});
-            db.loadDatabase(function (error) {   
-                if (error) {
-                    console.log('FATAL: local database could not be loaded. Caused by: ' + error);
-                    throw error;
-                  }
-                  console.log('INFO: local database loaded successfully.');
-              });
+       console.log("DB " + JSON.stringify(db));
+       
+        for(var table in db){
 
-        } else {
-         
-            db =  new Datastore({filename: DB_PATH, autoload: true});
+            var temp = db[table];
+     
+            // Requires databases to already exist
+            if (fs.existsSync(temp[0])) {
+                db[table] = new Datastore({filename: temp[0], autoload: true});
+                db[table].loadDatabase(function (err) {
+                    if (err) {
+                        console.log('FATAL: local database could not be loaded. Caused by: ' + error);
+                        throw err;
+                    }
+                    console.log('INFO: local database loaded successfully.');
+                });
+            } else {
+                db[table] = new Datastore({filename: temp[0], autoload: true});
+            }
 
+            // Using a unique constraint with the index
+            db[table].ensureIndex(
+              temp[1]
+            , function (err) {});
+            console.log("done ");
+            
         }
 
         return db;
     },
-
-    // Check if playlist is found
-    checkPlaylist: function (db) {
-        var p_uri;
-       
-        return p_uri;
-    },
+    
 
     // delete playlist
-    addPlaylist: async function (db,group_name, group_id, playlist_uri) {
-        console.log("HERE2.1");
-        console.log(db);
+    addPlaylist: function (db, groupName, groupId, playlistUri) {
 
-        var uri = playlist_uri.split(':')[2];
+        playlistUri = playlistUri.split(':')[2];
 
         var playlist = [{
 
-            _id: uri
-            ,group_id: group_id
-            ,name: group_name
-            ,description:''
+                _id: playlistUri,
+                group_id: groupId,
+                name: groupName,
+                description: ''
 
-        }];
-    
-        db.insert(playlist, function (error, newDoc) {   
-                if (error) {
-                  console.log('ERROR: saving playlist: ' + JSON.stringify(doc) + '. Caused by: ' + error);
-                  throw error;
-                }    
-                console.log('INFO: successfully saved playlist: ' + JSON.stringify(newDoc));
-        });
+            }];
+        return new Promise((resolve, reject) => {
+            db.insert(playlist, function (err, newDoc) {
+                if (err) 
+                    reject( err );
+                //console.log('INFO: successfully saved playlist: ' + JSON.stringify(newDoc));
+                resolve(newDoc);
+                
+            });
+        })
+    },
+
+
+    // Update name, pic, description
+    updatePlaylist: function (db, groupId, options) { 
+
+        return new Promise((resolve, reject) => {
+            db.update({group_id: groupId}, { $set: options}, function (err, newDoc) {
+                if (err) 
+                    reject( err );
+                //console.log('INFO: successfully saved playlist: ' + JSON.stringify(newDoc));
+                resolve(newDoc);
+            });
+        })
 
     },
 
-    // delete playlist from spotify & db?
-    // keep db copy, in case of user error
-    removePlaylist: function (db) {},
+    getPlaylist: function (db, groupId) {
 
-    // Update name, pic, description
-    updatePlaylist: function (db,uri, options) {
+        return new Promise((resolve, reject) => {
+            db.findOne({
+                group_id: groupId
+            }, function (err, docs) {
+                if (err) 
+                    reject(err);
+                
+                resolve(docs);
+            });
+        })
+        // to do: double check it exists as a spotify playlist
 
-        db.update({ _id: uri }, { $set: options }, function (error, newDoc) {
-            if (error) {
-                console.log('ERROR: saving playlist: ' + JSON.stringify(doc) + '. Caused by: ' + error);
-                throw error;
-              }    
-              console.log('INFO: successfully saved playlist: ' + JSON.stringify(newDoc));
-      });
+    },
 
+    addSongs: function(db, groupId, spotifySongs){
+
+
+        //playlistUri = playlistUri.split(':')[2];
+
+        var playlist = [{
+
+                _id: playlistUri,
+                group_id: groupId,
+                name: groupName,
+                description: ''
+
+            }];
+        return new Promise((resolve, reject) => {
+            db.insert(playlist, function (err, newDoc) {
+                if (err) 
+                    reject( err );
+                //console.log('INFO: successfully saved playlist: ' + JSON.stringify(newDoc));
+                resolve(newDoc);
+                
+            });
+        })
 
     }
 
+    /* ************* to do *************
+    // delete playlist from spotify & db?
+    // keep db copy, in case of user error
+    removePlaylist: function (db) {},
+*/
 
 };

@@ -1,2 +1,5 @@
 .env
 node_modules
+state.key
+playlists.db
+songs.db

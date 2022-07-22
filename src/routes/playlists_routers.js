@@ -8,86 +8,130 @@
 */
 var express = require('express')
 var router = express.Router({mergeParams: true});
-var db = require('./../db/nedb');
+var Datastore = require('./../db/nedb');
 
 // PLAYLIST EXISTS
-router.get('/:server_id', (req, res) => {
+router.get('/:group_id', async (req, res) => { // Assigning db & group_id
+    const db = req.app.locals.db,
+        groupId = req.params.group_id;
+
+    var statusCode,
+        response;
+
+    // checking if group_id is set in request
+    try {
+
+        await Datastore.getPlaylist(db, groupId).then((data) => {
+            if (data == Error) {
+                statusCode = 502;
+            } else if (data == null) {
+                statusCode = 404;
+                response = "No playlist found.";
+            } else {
+                statusCode = 200;
+                response = data;
+            }
+        });
+
+    } catch (err) {
+        statusCode = 500;
+        response = err;
+    } finally { // Response
+        res.status(statusCode).send(response);
+    }
 
 
-    console.log("server_id " + req.params.server_id);
-    res.json(req.params);
+}),
 
-});
 
 // ADD PLAYLIST
-router.post('/', (req, res) => {
-    
-    const spotifyCredentials =  req.app.locals.spotifyCredentials;
-    const database =  req.app.locals.db;
-    const { group_name, group_id } = req.query;
+router.post('/', async (req, res) => {
 
-    spotifyCredentials.createPlaylist(group_name)
-    .then((res)=>{
-        db.addPlaylist(database, group_name, group_id, res.body.uri )
-    })
-    .then((res)=>{    
-        res.json(res);
-    })
-    .catch((e)=>{res.json(e)});
+    const spotifyCredentials = req.app.locals.spotifyCredentials,
+        db = req.app.locals.db,
+        groupName = req.query.group_name,
+        groupId = req.query.group_id;
+
+    var statusCode,
+        response;
+
+    try {
+        if (! groupName || ! groupId) {
+            statusCode = 400;
+            response = "Malformed query";
+        } else { 
+            // Check if group already has a playlist
+            if (await Datastore.getPlaylist(db, groupId) != null) {
+
+                statusCode = 404;
+                response = "Playlist already exists for the group.";
+
+            } else {
+
+                await spotifyCredentials.createPlaylist(groupName).then((data) => {
+                    return Datastore.addPlaylist(db, groupName, groupId, data.body.uri);
+                }).then((data) => {
+                    statusCode = 200;
+                    response = data;
+                })
+
+            }
+        }
+    } catch (err) {
+        statusCode = 500;
+        response = err;
+    } finally { // Response
+        res.status(statusCode).send(response);
+    }
 
 });
 
 // UPDATE PLAYLIST
-router.put('/', (req, res) => {
+router.put('/', async (req, res) => {
 
-    const spotifyCredentials =  req.app.locals.spotifyCredentials;
-    const database =  req.app.locals.db;
-    const {uri, options} = req.query;
+    const spotifyCredentials = req.app.locals.spotifyCredentials,
+        db = req.app.locals.db, 
+        {groupId, options} = req.query;
 
-   spotifyCredentials.changePlaylistDetails(uri, JSON.parse(options))
-    .then((res)=>{
-        db.updatePlaylist(database,uri,JSON.parse(options) )
-    })
-    .then((res)=>{    
-        res.json(res);
-    })
-    .catch((e)=>{res.json(e)});
+    var statusCode,
+        response, 
+        playlistUri;
+
+    try {
+        if (!groupId || !options) {
+            statusCode = 400;
+            response = "Malformed query";
+        } else {
+             //Trading groupId for playlistUri with database
+             playlist = await Datastore.getPlaylist(db, groupId); 
+             if(playlist==null){
+                statusCode = 404;
+                response = "No playlist found.";
+            } else {
+                await spotifyCredentials.changePlaylistDetails(playlist._id, JSON.parse(options))
+                    .then(async() => {
+                        await Datastore.updatePlaylist(db, groupId, JSON.parse(options))
+                        return statusCode = 200;
+                    })
+                }
+        }
+    } catch (err) {
+        statusCode = 500;
+        response = err;
+    } finally { // Response
+        res.status(statusCode).send(response);
+    }
 
 });
 
-// DELETE PLAYLIST
+/* ************* ROUTES TO ADD *************
+
+// DELETE PLAYLIST 
 router.delete('/:server_id', (req, res) => {
 
-    const spotifyCredentials =  req.app.locals.spotifyCredentials;
-    const database =  req.app.locals.db;
-    const {uri, options} = req.query;
-
-   spotifyCredentials.changePlaylistDetails(uri, JSON.parse(options))
-    .then((res)=>{
-        db.updatePlaylist(database,uri,JSON.parse(options) )
-    })
-    .then((res)=>{    
-        res.json(res);
-    })
-    .catch((e)=>{res.json(e)});
 
 });
-
-
-/* ************* to do *************
-
-router.get('/', (req, res) => {
-
-    console.log("playlist");
-    req.params; // { userId: '42' }
-    res.json(req.params);
-
-});
-
-// PLAYLIST SONGS
-router.use('/:server_id/songs', songs_router);
 
 */
 
 module.exports = router;
-

@@ -18,10 +18,11 @@ router.get('/authorize', (req, res, next) => {
 
 router.get('/callback', (req, res, next) => {
     
-    req.app.locals.spotifyCredentials.setTokens(req.query.code).then((redirect,err)=>{
-        if(err) throw err;
-        res.redirect(redirect[0], redirect[1]);
-    })
+    req.app.locals.spotifyCredentials.setTokens(req.query.code)
+        .then((redirect,err)=>{
+            if(err) throw err;
+            res.redirect(redirect[0], redirect[1]);
+        })
 
 });
 

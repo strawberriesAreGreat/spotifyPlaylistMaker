@@ -16,7 +16,7 @@
  */
 const fs = require('fs');
 require('dotenv').config();
-var REFRESH_TOKEN_PATH = './src/configs/state';
+var REFRESH_TOKEN_PATH = './src/configs/state.key';
 
 module.exports = { 
     
