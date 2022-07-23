@@ -6,19 +6,28 @@ const SpotifyCredentials = require('./src/spotify/SpotifyCredentials');
 var express = require("express");
 var router = require('./src/routes/router')
 var dataBase = require('./src/db/nedb');
+const request = require('request');
 
 const app = express();
+app.use('/api', router);
 
 // Set up spotify credentials
 app.locals.spotifyCredentials = new SpotifyCredentials();
-
-// Set up database 
-dataBase.startDB().then((resp)=>{
-    app.locals.db = resp;
-});
+console.log(app.locals.spotifyCredentials );
 
 
-app.use('/api', router);
+
+
+
+app.locals.spotifyCredentials.setCredentials();
+
+
+    // Set up database 
+    dataBase.startDB().then((resp)=>{
+        app.locals.db = resp;
+    })
+
+
 
 // Launch time baby!!!!
 app.listen(PORT, function () {

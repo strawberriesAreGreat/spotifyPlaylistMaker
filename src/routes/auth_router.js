@@ -1,7 +1,7 @@
 /** Playlist managment
  * 
  * /api/auth/
- * 
+ * For admin use upon initialization of a new spotify account
  * 
  * 
  * 
@@ -11,7 +11,7 @@ var express = require('express');
 var router = express.Router();
 
 
-//add song to playlist
+
 router.get('/authorize', (req, res, next) => {
     res.redirect( req.app.locals.spotifyCredentials.getRedirectURL() );
 });

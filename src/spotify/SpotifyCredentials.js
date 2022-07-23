@@ -31,23 +31,30 @@ class SpotifyCredentials extends SpotifyWebApi {
             clientSecret: process.env.CLIENT_SECRET,
             scope: JSON.parse(process.env.LIST_SCOPE),
             state: process.env.STATE
+   
         });
+    }
+
+    async setCredentials(){
         if (refreshTokenExists()) {
-            console.log("HERE");
+            console.log("Info: Fetching refresh token from file")
             this.loadRefreshToken();
         } else {
+            console.log("Info: Fetching refresh token from Spotify")
             this.setRedirectURL();
         }
-        console.log("INITIAL API STATUS: \n" + JSON.stringify(this));
     }
 
     // ********************** SPOTIFY API SETTERS & GETTERS **********************
 
     setRedirectURL() {
         this._credentials.setRedirectURL = (this.createAuthorizeURL(JSON.parse(process.env.LIST_SCOPE), process.env.STATE));
+        console.log("WARNING: Admin authorization required");
     }
     getRedirectURL() {
+        console.log("in here");
         if (this._credentials.setRedirectURL == undefined) {
+            console.log("returning /api/" );
             return '/api/';
         }
         return this._credentials.setRedirectURL;
@@ -63,6 +70,7 @@ class SpotifyCredentials extends SpotifyWebApi {
             saveCredentials(data.body['refresh_token']);
             this.setAccessToken(data.body['access_token']);
             this.setRefreshToken(data.body['refresh_token']);
+            console.log("INFO: Refresh token fetched from spotify.");
 
         });
         return([200, '/']);
@@ -70,12 +78,13 @@ class SpotifyCredentials extends SpotifyWebApi {
 
 
     async loadRefreshToken() {
+        console.log("loading refresh token");
         try {
             var creds = await loadCredentials()
             var data = await this.setRefreshToken(creds);
             data = await this.refreshAccessToken();
             this.setAccessToken(data.body['access_token'])
-            console.log(JSON.stringify(this));
+            console.log("INFO: Refresh token fetched from file.");
             return([200, '/']);
         } catch (e) {
             throw(e);

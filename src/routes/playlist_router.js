@@ -8,11 +8,11 @@
 */
 var express = require('express')
 var router = express.Router({mergeParams: true});
-var Datastore = require('./../db/nedb');
+var Datastore = require('../db/nedb');
 
 // PLAYLIST EXISTS
 router.get('/:group_id', async (req, res) => { // Assigning db & group_id
-    const db = req.app.locals.db,
+    const playlistDB = req.app.locals.db['playlists'],
         groupId = req.params.group_id;
 
     var statusCode,
@@ -21,7 +21,7 @@ router.get('/:group_id', async (req, res) => { // Assigning db & group_id
     // checking if group_id is set in request
     try {
 
-        await Datastore.getPlaylist(db, groupId).then((data) => {
+        await Datastore.getPlaylist(playlistDB, groupId).then((data) => {
             if (data == Error) {
                 statusCode = 502;
             } else if (data == null) {
@@ -48,12 +48,14 @@ router.get('/:group_id', async (req, res) => { // Assigning db & group_id
 router.post('/', async (req, res) => {
 
     const spotifyCredentials = req.app.locals.spotifyCredentials,
-        db = req.app.locals.db,
+        playlistDB = req.app.locals.db['playlists'],
         groupName = req.query.group_name,
         groupId = req.query.group_id;
 
     var statusCode,
         response;
+
+        console.log(playlistDB);
 
     try {
         if (! groupName || ! groupId) {
@@ -61,7 +63,7 @@ router.post('/', async (req, res) => {
             response = "Malformed query";
         } else { 
             // Check if group already has a playlist
-            if (await Datastore.getPlaylist(db, groupId) != null) {
+            if (await Datastore.getPlaylist(playlistDB, groupId) != null) {
 
                 statusCode = 404;
                 response = "Playlist already exists for the group.";
@@ -69,7 +71,7 @@ router.post('/', async (req, res) => {
             } else {
 
                 await spotifyCredentials.createPlaylist(groupName).then((data) => {
-                    return Datastore.addPlaylist(db, groupName, groupId, data.body.uri);
+                    return Datastore.addPlaylist(playlistDB, groupName, groupId, data.body.uri);
                 }).then((data) => {
                     statusCode = 200;
                     response = data;
@@ -90,7 +92,7 @@ router.post('/', async (req, res) => {
 router.put('/', async (req, res) => {
 
     const spotifyCredentials = req.app.locals.spotifyCredentials,
-        db = req.app.locals.db, 
+        playlistDB = req.app.locals.db['playlists'], 
         {groupId, options} = req.query;
 
     var statusCode,
@@ -103,14 +105,14 @@ router.put('/', async (req, res) => {
             response = "Malformed query";
         } else {
              //Trading groupId for playlistUri with database
-             playlist = await Datastore.getPlaylist(db, groupId); 
+             playlist = await Datastore.getPlaylist(playlistDB, groupId); 
              if(playlist==null){
                 statusCode = 404;
                 response = "No playlist found.";
             } else {
                 await spotifyCredentials.changePlaylistDetails(playlist._id, JSON.parse(options))
                     .then(async() => {
-                        await Datastore.updatePlaylist(db, groupId, JSON.parse(options))
+                        await Datastore.updatePlaylist(playlistDB, groupId, JSON.parse(options))
                         return statusCode = 200;
                     })
                 }
