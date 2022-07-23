@@ -27,10 +27,20 @@ const fs = require('fs');
 
 require('dotenv').config();
 
-const   Datastore = require('nedb'),
-        //Be certain to addd any new databse tables to gitignore file
-        songDB = [process.env.DB_PATH + 'songs.db',{fieldName: 'playlist_track', unique: true} ],
-        playlistDB = [process.env.DB_PATH + 'playlists.db', {fieldName: 'group_id', unique: true}] ;
+const Datastore = require('nedb'),
+    // Be certain to addd any new databse tables to gitignore file
+    songDB = [
+        process.env.DB_PATH + 'songs.db', {
+            fieldName: 'playlist_track',
+            unique: true
+        }
+    ],
+    playlistDB = [
+        process.env.DB_PATH + 'playlists.db', {
+            fieldName: 'group_id',
+            unique: true
+        }
+    ];
 
 var db;
 
@@ -38,18 +48,18 @@ module.exports = {
 
     // Load or Initialize db for server use
     startDB: async function () {
-        
-       db = await new Promise((Resolve, Reject)=>{
-            Resolve ({ playlists: playlistDB, songs:songDB});
-                Reject(err);
-       });
 
-       //console.log("DB " + JSON.stringify(db));
-       
-        for(var table in db){
+        db = await new Promise((Resolve, Reject) => {
+            Resolve({playlists: playlistDB, songs: songDB});
+            Reject(err);
+        });
+
+        // console.log("DB " + JSON.stringify(db));
+
+        for (var table in db) {
 
             var temp = db[table];
-     
+
             // Requires databases to already exist
             if (fs.existsSync(temp[0])) {
                 db[table] = new Datastore({filename: temp[0], autoload: true});
@@ -65,16 +75,14 @@ module.exports = {
             }
 
             // Using a unique constraint with the index
-            db[table].ensureIndex(
-              temp[1]
-            , function (err) {});
+            db[table].ensureIndex(temp[1], function (err) {});
 
-            
+
         }
 
         return db;
     },
-    
+
 
     // delete playlist
     addPlaylist: function (db, groupName, groupId, playlistUri) {
@@ -92,23 +100,29 @@ module.exports = {
         return new Promise((resolve, reject) => {
             db.insert(playlist, function (err, newDoc) {
                 if (err) 
-                    reject( err );
-                //console.log('INFO: successfully saved playlist: ' + JSON.stringify(newDoc));
-                resolve(newDoc);
+                    reject(err);
                 
+                // console.log('INFO: successfully saved playlist: ' + JSON.stringify(newDoc));
+                resolve(newDoc);
+
             });
         })
     },
 
 
     // Update name, pic, description
-    updatePlaylist: function (db, groupId, options) { 
+    updatePlaylist: function (db, groupId, options) {
 
         return new Promise((resolve, reject) => {
-            db.update({group_id: groupId}, { $set: options}, function (err, newDoc) {
+            db.update({
+                group_id: groupId
+            }, {
+                $set: options
+            }, function (err, newDoc) {
                 if (err) 
-                    reject( err );
-                //console.log('INFO: successfully saved playlist: ' + JSON.stringify(newDoc));
+                    reject(err);
+                
+                // console.log('INFO: successfully saved playlist: ' + JSON.stringify(newDoc));
                 resolve(newDoc);
             });
         })
@@ -124,6 +138,7 @@ module.exports = {
                 if (err) 
                     reject(err);
                 
+
                 resolve(docs);
             });
         })
@@ -131,42 +146,79 @@ module.exports = {
 
     },
 
-    addSongs: async function(songsDB, groupId, spotifyTracks){
-
-        //Filter out songs already added to the playlist
+    addSongs: async function (songsDB, groupId, spotifyTracks) { // Filter out songs already added to the playlist
         var playlistTrack,
             spotifyURI,
             updatedTrackList = [];
-        console.log("In here");
-        return await new Promise( async(resolve, reject)=>{
 
-            for (var spotifyTrack in spotifyTracks){
+        return await new Promise(async (resolve, reject) => {
+
+            for (var spotifyTrack in spotifyTracks) {
 
                 spotifyURI = spotifyTracks[spotifyTrack];
-                playlistTrack = [{ 
-                    playlist_track: ("{"+groupId+':'+spotifyURI+"}") 
-                }];
+                playlistTrack = [{
+                        playlist_track: ("{" + groupId + ':' + spotifyURI + "}")
+                    }];
 
-                spotifyURIStatus = await new Promise( (resolve, reject)=>{
-                    songsDB.insert(playlistTrack,function (err) {
-                        if(err) resolve();
-                        if(!err){
+                spotifyURIStatus = await new Promise((resolve, reject) => {
+                    songsDB.insert(playlistTrack, function (err) {
+                        if (err) 
+                            resolve();
+                        
+                        if (! err) {
                             resolve(spotifyURI);
                         }
                     })
                 })
 
-                if(spotifyURIStatus!=undefined)
-                updatedTrackList.push("spotify:track:"+spotifyURI);
+                if (spotifyURIStatus != undefined) 
+                    updatedTrackList.push("spotify:track:" + spotifyURI);
                 
-            }
 
+            }
             resolve(updatedTrackList);
         })
-        
+    },
+    
+    removeSongs: async function (songsDB, groupId, spotifyTracks) {
+        var playlistTrack,
+            spotifyURI,
+            updatedTrackList = [];
+      
+        return await new Promise(async (resolve, reject) => {
+            for (var spotifyTrack in spotifyTracks) {
+
+                spotifyURI = spotifyTracks[spotifyTrack];
+                playlistTrack = {
+                        playlist_track: ("{" + groupId + ':' + spotifyURI + "}")
+                    };
+             
+                spotifyURIStatus = await new Promise((resolve, reject) => {
+                    songsDB.remove(
+                        playlistTrack, 
+                        function (err, numRemoved) {
+                            console.log(numRemoved);
+                        if (err || numRemoved == 0)
+                            resolve();
+                        
+                        if (! err) {
+                            resolve(spotifyURI);
+                        }
+                    })
+                })
+
+                if (spotifyURIStatus != undefined) 
+                    updatedTrackList.push({uri:"spotify:track:" + spotifyURI});
+                
+
+            }
+            resolve(updatedTrackList);
+        })
+
+    }
 
 
-        /*
+    /*
         return new Promise( (resolve, reject)=>{
 
                 for (var spotifyTrack in spotifyTracks){
@@ -211,14 +263,11 @@ module.exports = {
 
             })
               */
-        }
-            
+};
 
-    /* ************* to do *************
+
+/* ************* to do *************
     // delete playlist from spotify & db?
     // keep db copy, in case of user error
     removePlaylist: function (db) {},
 */
-
-
-}
