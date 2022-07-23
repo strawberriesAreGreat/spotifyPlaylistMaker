@@ -22,6 +22,7 @@ module.exports = {
     
     // change name to checkCredentials
     refreshTokenExists: function () {
+        
         return fs.existsSync(REFRESH_TOKEN_PATH);
     },
 

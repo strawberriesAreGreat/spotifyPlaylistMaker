@@ -2,8 +2,11 @@
  * 
  * /api/playlists/{playlist_id}/songs/{song_id}
  * 
- * 
- * 
+ * TO ADD:
+ * Convert youtube video songs --> spotifyURIs
+ * using: https://www.youtube.com/oembed?url=
+ * and an algorithm to clean STRING video-title 
+ * and then string match it with spotify track search results
  * 
 */
 var express = require('express')
@@ -17,6 +20,7 @@ router.get('/', (req, res) => {
     res.json(req.params);
 
 });
+
 
 // ADD SONG(S)
 router.post('/', async (req, res) => {
@@ -34,7 +38,7 @@ router.post('/', async (req, res) => {
     try {
 
         spotifyTracks = JSON.parse(req.query.spotify_tracks);
-        console.log(spotifyTracks);
+        //youtubeTracks = JSON.parse(req.query.youtube_tracks);
         playlist = await(Datastore.getPlaylist(playlistDB, groupId));
 
 
